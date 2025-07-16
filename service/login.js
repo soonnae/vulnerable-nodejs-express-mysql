@@ -9,6 +9,8 @@ var express = require("express");
 var session = require("express-session");
 var bodyParser = require("body-parser");
 var path = require("path");
+var csrf = require("csurf");
+var rateLimit = require("express-rate-limit");
 
 var connection = mysql.createConnection({
   host: "db",
@@ -23,10 +25,22 @@ app.use(
     secret: require("crypto").randomBytes(64).toString("hex"),
     resave: true,
     saveUninitialized: true,
+    cookie: { secure: true } // 쿠키에 secure 플래그 추가
   })
 );
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+
+// CSRF 보호 미들웨어 추가
+var csrfProtection = csrf({ cookie: true });
+app.use(csrfProtection);
+
+// 속도 제한 미들웨어 추가
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15분
+  max: 100 // 각 IP당 100개의 요청으로 제한
+});
+app.use(limiter);
 
 app.get("/", function (request, response) {
   response.sendFile(path.join(__dirname + "/login.html"));
