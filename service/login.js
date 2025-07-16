@@ -9,6 +9,9 @@ var express = require("express");
 var session = require("express-session");
 var bodyParser = require("body-parser");
 var path = require("path");
+var helmet = require("helmet");
+var rateLimit = require("express-rate-limit");
+var csurf = require("csurf");
 
 var connection = mysql.createConnection({
   host: "db",
@@ -18,6 +21,7 @@ var connection = mysql.createConnection({
 });
 
 var app = express();
+app.use(helmet()); // Disable X-Powered-By header
 app.use(
   session({
     secret: require("crypto").randomBytes(64).toString("hex"),
@@ -27,6 +31,14 @@ app.use(
 );
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+});
+app.use(limiter); // Apply rate limiting to all requests
+
+app.use(csurf()); // Enable CSRF protection
 
 app.get("/", function (request, response) {
   response.sendFile(path.join(__dirname + "/login.html"));
